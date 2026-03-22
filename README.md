@@ -53,7 +53,7 @@ This repository contains **Version 1**, focused on airport data management.
 
 ## External Help
 
-Some parts of this text was developed with the help of AI tools such as ChatGPT.
+Some parts of this text were developed with the help of AI tools such as ChatGPT.
 
 ---
 
