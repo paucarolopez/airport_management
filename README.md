@@ -39,7 +39,8 @@ This repository contains **Version 1**, focused on airport data management.
 
 ## Demo Video
 
-https://youtu.be/IOMGNEMnM4Q
+Version 1 Video: https://youtu.be/IOMGNEMnM4Q
+Version 2 Video: https://youtu.be/IOMGNEMnM4Q
 
 ---
 
