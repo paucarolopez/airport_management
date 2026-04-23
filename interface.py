@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox  # Para abrir archivos y mostrar mensajes
 from airport import *
+from aircraft import *
 
 # Ventana principal
 root = tk.Tk()
@@ -9,6 +10,7 @@ root.geometry("600x500")
 
 # Lista de aeropuertos en memoria
 airports = []
+aircrafts = []
 
 # ================== FUNCIONES ==================
 
@@ -100,6 +102,51 @@ def map_airports():
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo abrir Google Earth:\n{e}")
 
+def load_arrivals():
+    filename = filedialog.askopenfilename(title="Selecciona archivo de vuelos")
+    if not filename:
+        return
+
+    global aircrafts
+    aircrafts = LoadArrivals(filename)
+
+    messagebox.showinfo("Éxito", f"{len(aircrafts)} vuelos cargados")
+
+
+def save_flights():
+    if not aircrafts:
+        messagebox.showerror("Error", "No hay vuelos")
+        return
+
+    filename = filedialog.asksaveasfilename(defaultextension=".txt")
+    if not filename:
+        return
+
+    SaveFlights(aircrafts, filename)
+    messagebox.showinfo("Guardado", "Archivo guardado")
+
+
+def plot_arrivals():
+    PlotArrivals(aircrafts)
+
+
+def plot_airlines():
+    PlotAirlines(aircrafts)
+
+
+def plot_flight_types():
+    PlotFlightsType(aircrafts, airports)
+
+
+def map_flights():
+    MapFlights(aircrafts, airports)
+    messagebox.showinfo("KML generado", "Abrir flights.kml en Google Earth")
+
+
+def map_long_flights():
+    MapFlights(aircrafts, airports, only_long=True)
+    messagebox.showinfo("KML generado", "Solo vuelos largos")
+
 # ================== INTERFAZ ==================
 tk.Label(root, text="Código ICAO:").pack()
 entry_icao = tk.Entry(root)
@@ -120,6 +167,13 @@ tk.Button(root, text="Guardar aeropuertos Schengen", command=save_schengen_airpo
 tk.Button(root, text="Mostrar aeropuertos", command=show_airports).pack(pady=5)
 tk.Button(root, text="Graficar aeropuertos", command=plot_airports).pack(pady=5)
 tk.Button(root, text="Mostrar aeropuertos en Google Earth", command=map_airports).pack(pady=5)
+tk.Button(root, text="Cargar vuelos", command=load_arrivals).pack(pady=5)
+tk.Button(root, text="Guardar vuelos", command=save_flights).pack(pady=5)
+tk.Button(root, text="Plot llegadas por hora", command=plot_arrivals).pack(pady=5)
+tk.Button(root, text="Plot por aerolínea", command=plot_airlines).pack(pady=5)
+tk.Button(root, text="Plot tipo vuelo", command=plot_flight_types).pack(pady=5)
+tk.Button(root, text="Mostrar rutas", command=map_flights).pack(pady=5)
+tk.Button(root, text="Mostrar rutas largas", command=map_long_flights).pack(pady=5)
 
 
 
