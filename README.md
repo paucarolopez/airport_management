@@ -5,7 +5,7 @@
 This project consists of developing a tool to manage airport gates.
 The system will allow assigning gates to flights, managing airport data, and visualizing occupancy statistics.
 
-This repository contains **Version 1**, focused on airport data management.
+This repository contains **Version 2**, focused on airport data management.
 
 ---
 
@@ -39,8 +39,7 @@ This repository contains **Version 1**, focused on airport data management.
 
 ## Demo Video
 
-Version 1 Video: https://youtu.be/IOMGNEMnM4Q
-Version 2 Video: https://youtu.be/IOMGNEMnM4Q
+Version 2 Video: https://youtu.be/KyMU-hvc610
 
 ---
 
