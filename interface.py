@@ -1,181 +1,150 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox  # Para abrir archivos y mostrar mensajes
+from tkinter import filedialog, messagebox
+from tkinter import ttk
+
 from airport import *
-from aircraft import *
+from LEBL import *
 
-# Ventana principal
+# ================== VENTANA ==================
 root = tk.Tk()
-root.title("Gestión de Aeropuertos")
-root.geometry("600x500")
+root.title("Airport Manager")
+root.geometry("700x550")
 
-# Lista de aeropuertos en memoria
+# Pestañas
+notebook = ttk.Notebook(root)
+notebook.pack(fill="both", expand=True)
+
+tab1 = tk.Frame(notebook)
+tab2 = tk.Frame(notebook)
+
+notebook.add(tab1, text="Aeropuertos (V1)")
+notebook.add(tab2, text="Gates (V3)")
+
+# ================== DATOS ==================
 airports = []
-aircrafts = []
+bcn = None
+aircrafts = []  # Debes cargar esto con versión 2
 
-# ================== FUNCIONES ==================
+# ================== FUNCIONES V1 ==================
 
 def add_airport():
     icaocode = entry_icao.get().upper()
     try:
         lat = float(entry_lat.get())
         lon = float(entry_lon.get())
-    except ValueError:
-        messagebox.showerror("Error", "Latitud y longitud deben ser números")
-        return
-
-    if len(icaocode) != 4 or not icaocode.isalpha():
-        messagebox.showerror("Error", "El código ICAO debe tener 4 letras")
+    except:
+        messagebox.showerror("Error", "Latitud/Longitud inválidas")
         return
 
     new_airport = Airport(icaocode, lat, lon)
     SetSchengen(new_airport)
     AddAirport(airports, new_airport)
-    messagebox.showinfo("Éxito", f"Aeropuerto {icaocode} agregado correctamente")
-    entry_icao.delete(0, tk.END)
-    entry_lat.delete(0, tk.END)
-    entry_lon.delete(0, tk.END)
+
+    messagebox.showinfo("OK", f"{icaocode} añadido")
+
 
 def remove_airport():
-    icaocode = entry_icao.get().upper()
-    if len(icaocode) != 4:
-        messagebox.showerror("Error", "Introduce un código ICAO válido")
-        return
+    code = entry_icao.get().upper()
+    RemoveAirport(airports, code)
 
-    result = RemoveAirport(airports, icaocode)
-    if result is None:
-        messagebox.showinfo("Éxito", f"Aeropuerto {icaocode} eliminado correctamente")
-    else:
-        messagebox.showerror("Error", f"No se encontró el aeropuerto {icaocode}")
 
-def load_airports_file():
-    filename = filedialog.askopenfilename(title="Selecciona archivo de aeropuertos")
+def load_airports():
+    filename = filedialog.askopenfilename()
     if not filename:
         return
-    try:
-        global airports
-        airports = LoadAirports(filename)
-        # Set Schengen para todos
-        for ap in airports:
-            SetSchengen(ap)
-        messagebox.showinfo("Éxito", f"Cargados {len(airports)} aeropuertos desde el archivo")
-    except Exception as e:
-        messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{e}")
 
-def save_schengen_airports():
-    if not airports:
-        messagebox.showerror("Error", "No hay aeropuertos cargados")
-        return
-    filename = filedialog.asksaveasfilename(title="Guardar aeropuertos Schengen", defaultextension=".txt")
-    if not filename:
-        return
-    try:
-        SaveSchengenAirports(airports, filename)
-        messagebox.showinfo("Éxito", f"Aeropuertos Schengen guardados en {filename}")
-    except Exception as e:
-        messagebox.showerror("Error", f"No se pudo guardar el archivo:\n{e}")
+    global airports
+    airports = LoadAirports(filename)
+
+    for ap in airports:
+        SetSchengen(ap)
+
+    messagebox.showinfo("OK", "Aeropuertos cargados")
+
 
 def show_airports():
     if not airports:
-        messagebox.showerror("Error", "No hay aeropuertos cargados")
+        messagebox.showerror("Error", "No hay datos")
         return
-    info = ""
+
+    text = ""
     for ap in airports:
-        info += f"{ap.code} - Lat:{ap.lat}, Lon:{ap.lon}, Schengen:{ap.schengen}\n"
-    # Mostrar en ventana emergente
-    messagebox.showinfo("Lista de Aeropuertos", info)
+        text += f"{ap.code} | Schengen: {ap.schengen}\n"
 
-def plot_airports():
-    if not airports:
-        messagebox.showerror("Error", "No hay aeropuertos para graficar")
-        return
-    try:
-        PlotAirports(airports)
-    except Exception as e:
-        messagebox.showerror("Error", f"No se pudo mostrar gráfico:\n{e}")
+    messagebox.showinfo("Lista", text)
 
-def map_airports():
-    if not airports:
-        messagebox.showerror("Error", "No hay aeropuertos para mostrar en Google Earth")
-        return
-    try:
-        MapAirports(airports)
-    except Exception as e:
-        messagebox.showerror("Error", f"No se pudo abrir Google Earth:\n{e}")
 
-def load_arrivals():
-    filename = filedialog.askopenfilename(title="Selecciona archivo de vuelos")
-    if not filename:
+# ================== FUNCIONES V3 ==================
+
+def load_structure():
+    global bcn
+    bcn = LoadAirportStructure("LEBL.txt")
+
+    if bcn == -1:
+        messagebox.showerror("Error", "No se pudo cargar LEBL")
+    else:
+        messagebox.showinfo("OK", "Estructura cargada")
+
+
+def assign_gates():
+    global bcn, aircrafts
+
+    if bcn is None:
+        messagebox.showerror("Error", "Carga primero el aeropuerto")
         return
 
-    global aircrafts
-    aircrafts = LoadArrivals(filename)
-
-    messagebox.showinfo("Éxito", f"{len(aircrafts)} vuelos cargados")
-
-
-def save_flights():
     if not aircrafts:
-        messagebox.showerror("Error", "No hay vuelos")
+        messagebox.showerror("Error", "No hay vuelos cargados")
         return
 
-    filename = filedialog.asksaveasfilename(defaultextension=".txt")
-    if not filename:
+    for ac in aircrafts:
+        AssignGate(bcn, ac)
+
+    messagebox.showinfo("OK", "Gates asignados")
+
+
+def show_occupancy():
+    if bcn is None:
+        messagebox.showerror("Error", "No hay aeropuerto")
         return
 
-    SaveFlights(aircrafts, filename)
-    messagebox.showinfo("Guardado", "Archivo guardado")
+    occ = GateOccupancy(bcn)
+
+    text = ""
+    for g in occ[:25]:
+        text += f"{g}\n"
+
+    messagebox.showinfo("Ocupación", text)
 
 
-def plot_arrivals():
-    PlotArrivals(aircrafts)
+# ================== TAB 1 (V1) ==================
 
-
-def plot_airlines():
-    PlotAirlines(aircrafts)
-
-
-def plot_flight_types():
-    PlotFlightsType(aircrafts, airports)
-
-
-def map_flights():
-    MapFlights(aircrafts, airports)
-    messagebox.showinfo("KML generado", "Abrir flights.kml en Google Earth")
-
-
-def map_long_flights():
-    MapFlights(aircrafts, airports, only_long=True)
-    messagebox.showinfo("KML generado", "Solo vuelos largos")
-
-# ================== INTERFAZ ==================
-tk.Label(root, text="Código ICAO:").pack()
-entry_icao = tk.Entry(root)
+tk.Label(tab1, text="Código ICAO").pack()
+entry_icao = tk.Entry(tab1)
 entry_icao.pack()
 
-tk.Label(root, text="Latitud:").pack()
-entry_lat = tk.Entry(root)
+tk.Label(tab1, text="Latitud").pack()
+entry_lat = tk.Entry(tab1)
 entry_lat.pack()
 
-tk.Label(root, text="Longitud:").pack()
-entry_lon = tk.Entry(root)
+tk.Label(tab1, text="Longitud").pack()
+entry_lon = tk.Entry(tab1)
 entry_lon.pack()
 
-tk.Button(root, text="Agregar aeropuerto", command=add_airport).pack(pady=5)
-tk.Button(root, text="Eliminar aeropuerto", command=remove_airport).pack(pady=5)
-tk.Button(root, text="Cargar aeropuertos desde archivo", command=load_airports_file).pack(pady=5)
-tk.Button(root, text="Guardar aeropuertos Schengen", command=save_schengen_airports).pack(pady=5)
-tk.Button(root, text="Mostrar aeropuertos", command=show_airports).pack(pady=5)
-tk.Button(root, text="Graficar aeropuertos", command=plot_airports).pack(pady=5)
-tk.Button(root, text="Mostrar aeropuertos en Google Earth", command=map_airports).pack(pady=5)
-tk.Button(root, text="Cargar vuelos", command=load_arrivals).pack(pady=5)
-tk.Button(root, text="Guardar vuelos", command=save_flights).pack(pady=5)
-tk.Button(root, text="Plot llegadas por hora", command=plot_arrivals).pack(pady=5)
-tk.Button(root, text="Plot por aerolínea", command=plot_airlines).pack(pady=5)
-tk.Button(root, text="Plot tipo vuelo", command=plot_flight_types).pack(pady=5)
-tk.Button(root, text="Mostrar rutas", command=map_flights).pack(pady=5)
-tk.Button(root, text="Mostrar rutas largas", command=map_long_flights).pack(pady=5)
+tk.Button(tab1, text="Agregar aeropuerto", command=add_airport).pack(pady=5)
+tk.Button(tab1, text="Eliminar aeropuerto", command=remove_airport).pack(pady=5)
+tk.Button(tab1, text="Cargar aeropuertos", command=load_airports).pack(pady=5)
+tk.Button(tab1, text="Mostrar aeropuertos", command=show_airports).pack(pady=5)
 
 
+# ================== TAB 2 (V3) ==================
 
-# Arranco la ventana
+tk.Label(tab2, text="Gestión de Gates LEBL", font=("Arial", 14)).pack(pady=10)
+
+tk.Button(tab2, text="Cargar estructura aeropuerto", command=load_structure).pack(pady=5)
+tk.Button(tab2, text="Asignar gates", command=assign_gates).pack(pady=5)
+tk.Button(tab2, text="Mostrar ocupación", command=show_occupancy).pack(pady=5)
+
+
+# ==================
 root.mainloop()
