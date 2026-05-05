@@ -1,149 +1,186 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from tkinter import ttk
+class Gate:
+    def __init__(self, name):
+        self.name = name
+        self.occupied = False
+        self.aircraft_id = None
 
-from airport import *
-from LEBL import *
 
-# ================== VENTANA ==================
-root = tk.Tk()
-root.title("Airport Manager")
-root.geometry("700x550")
+class BoardingArea:
+    def __init__(self, name, area_type):
+        self.name = name
+        self.type = area_type  # "Schengen" o "non-Schengen"
+        self.gates = []
 
-# Pestañas
-notebook = ttk.Notebook(root)
-notebook.pack(fill="both", expand=True)
 
-tab1 = tk.Frame(notebook)
-tab2 = tk.Frame(notebook)
+class Terminal:
+    def __init__(self, name):
+        self.name = name
+        self.areas = []
+        self.airlines = []
 
-notebook.add(tab1, text="Aeropuertos (V1)")
-notebook.add(tab2, text="Gates (V3)")
 
-# ================== DATOS ==================
-airports = []
-bcn = None
-aircrafts = []  # Debes cargar esto con versión 2
+class BarcelonaAP:
+    def __init__(self, code):
+        self.code = code
+        self.terminals = []
 
-# ================== FUNCIONES V1 ==================
 
-def add_airport():
-    icaocode = entry_icao.get().upper()
+# FUNCIONES
+
+def SetGates(area, init_gate, end_gate, prefix):
+    if end_gate <= init_gate:
+        return -1
+
+    area.gates = []
+    for i in range(init_gate, end_gate + 1):
+        gate_name = f"{prefix}G{i}"
+        area.gates.append(Gate(gate_name))
+
+
+def LoadAirlines(terminal, t_name):
+    filename = f"{t_name}_Airlines.txt"
+
     try:
-        lat = float(entry_lat.get())
-        lon = float(entry_lon.get())
-    except:
-        messagebox.showerror("Error", "Latitud/Longitud inválidas")
-        return
-
-    new_airport = Airport(icaocode, lat, lon)
-    SetSchengen(new_airport)
-    AddAirport(airports, new_airport)
-
-    messagebox.showinfo("OK", f"{icaocode} añadido")
+        with open(filename, "r") as f:
+            terminal.airlines = []
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    code = parts[-1]
+                    terminal.airlines.append(code)
+    except FileNotFoundError:
+        return -1
 
 
-def remove_airport():
-    code = entry_icao.get().upper()
-    RemoveAirport(airports, code)
+def LoadAirportStructure(filename):
+    try:
+        with open(filename, "r") as f:
+            lines = [l.strip() for l in f if l.strip()]
+    except FileNotFoundError:
+        return -1
+
+    # Primera línea
+    first = lines[0].split()
+    bcn = BarcelonaAP(first[0])
+
+    i = 1
+    while i < len(lines):
+        # Terminal
+        parts = lines[i].split()
+        t_name = parts[1]
+        num_areas = int(parts[2])
+
+        terminal = Terminal(t_name)
+        LoadAirlines(terminal, t_name)
+
+        i += 1
+
+        # Boarding Areas
+        for _ in range(num_areas):
+            parts = lines[i].split()
+
+            area_name = parts[1]
+            area_type = parts[2]
+            init_gate = int(parts[4])
+            end_gate = int(parts[6])
+
+            area = BoardingArea(area_name, area_type)
+
+            prefix = f"{t_name}BA{area_name}"
+            SetGates(area, init_gate, end_gate, prefix)
+
+            terminal.areas.append(area)
+            i += 1
+
+        bcn.terminals.append(terminal)
+
+    return bcn
 
 
-def load_airports():
-    filename = filedialog.askopenfilename()
-    if not filename:
-        return
+def GateOccupancy(bcn):
+    result = []
 
-    global airports
-    airports = LoadAirports(filename)
+    for t in bcn.terminals:
+        for area in t.areas:
+            for gate in area.gates:
+                result.append({
+                    "gate": gate.name,
+                    "occupied": gate.occupied,
+                    "aircraft": gate.aircraft_id
+                })
 
-    for ap in airports:
-        SetSchengen(ap)
-
-    messagebox.showinfo("OK", "Aeropuertos cargados")
-
-
-def show_airports():
-    if not airports:
-        messagebox.showerror("Error", "No hay datos")
-        return
-
-    text = ""
-    for ap in airports:
-        text += f"{ap.code} | Schengen: {ap.schengen}\n"
-
-    messagebox.showinfo("Lista", text)
+    return result
 
 
-# ================== FUNCIONES V3 ==================
+def IsAirlineInTerminal(terminal, name):
+    if not name or len(terminal.airlines) == 0:
+        return False
+    return name in terminal.airlines
 
-def load_structure():
-    global bcn
+
+def SearchTerminal(bcn, name):
+    for t in bcn.terminals:
+        if IsAirlineInTerminal(t, name):
+            return t.name
+    return ""
+
+
+def AssignGate(bcn, aircraft):
+    terminal_name = SearchTerminal(bcn, aircraft.airline)
+
+    if terminal_name == "":
+        return -1
+
+    for t in bcn.terminals:
+        if t.name == terminal_name:
+            for area in t.areas:
+
+                # comprobar tipo Schengen
+                if area.type.lower().startswith("schengen") and aircraft.schengen:
+                    pass
+                elif area.type.lower().startswith("non") and not aircraft.schengen:
+                    pass
+                else:
+                    continue
+
+                # buscar gate libre
+                for gate in area.gates:
+                    if not gate.occupied:
+                        gate.occupied = True
+                        gate.aircraft_id = aircraft.id
+                        return gate.name
+
+    return -1
+
+
+# =========================
+# TEST
+# =========================
+
+if __name__ == "__main__":
+
+    class DummyAircraft:
+        def __init__(self, id, airline, schengen):
+            self.id = id
+            self.airline = airline
+            self.schengen = schengen
+
     bcn = LoadAirportStructure("LEBL.txt")
 
     if bcn == -1:
-        messagebox.showerror("Error", "No se pudo cargar LEBL")
+        print("Error loading airport")
     else:
-        messagebox.showinfo("OK", "Estructura cargada")
+        print("Airport loaded")
 
+        a1 = DummyAircraft("TEST1", "VLG", True)
+        a2 = DummyAircraft("TEST2", "UPS", False)
 
-def assign_gates():
-    global bcn, aircrafts
+        print("Assign:", AssignGate(bcn, a1))
+        print("Assign:", AssignGate(bcn, a2))
 
-    if bcn is None:
-        messagebox.showerror("Error", "Carga primero el aeropuerto")
-        return
-
-    if not aircrafts:
-        messagebox.showerror("Error", "No hay vuelos cargados")
-        return
-
-    for ac in aircrafts:
-        AssignGate(bcn, ac)
-
-    messagebox.showinfo("OK", "Gates asignados")
-
-
-def show_occupancy():
-    if bcn is None:
-        messagebox.showerror("Error", "No hay aeropuerto")
-        return
-
-    occ = GateOccupancy(bcn)
-
-    text = ""
-    for g in occ[:25]:
-        text += f"{g}\n"
-
-    messagebox.showinfo("Ocupación", text)
-
-
-# ================== TAB 1 (V1) ==================
-
-tk.Label(tab1, text="Código ICAO").pack()
-entry_icao = tk.Entry(tab1)
-entry_icao.pack()
-
-tk.Label(tab1, text="Latitud").pack()
-entry_lat = tk.Entry(tab1)
-entry_lat.pack()
-
-tk.Label(tab1, text="Longitud").pack()
-entry_lon = tk.Entry(tab1)
-entry_lon.pack()
-
-tk.Button(tab1, text="Agregar aeropuerto", command=add_airport).pack(pady=5)
-tk.Button(tab1, text="Eliminar aeropuerto", command=remove_airport).pack(pady=5)
-tk.Button(tab1, text="Cargar aeropuertos", command=load_airports).pack(pady=5)
-tk.Button(tab1, text="Mostrar aeropuertos", command=show_airports).pack(pady=5)
-
-
-# ================== TAB 2 (V3) ==================
-
-tk.Label(tab2, text="Gestión de Gates LEBL", font=("Arial", 14)).pack(pady=10)
-
-tk.Button(tab2, text="Cargar estructura aeropuerto", command=load_structure).pack(pady=5)
-tk.Button(tab2, text="Asignar gates", command=assign_gates).pack(pady=5)
-tk.Button(tab2, text="Mostrar ocupación", command=show_occupancy).pack(pady=5)
+        occ = GateOccupancy(bcn)
+        for g in occ[:10]:
+            print(g)
 
 
 # ==================
