@@ -1,200 +1,246 @@
 import matplotlib.pyplot as plt
 import math
-from airport import *
+from airport import LoadAirports, IsSchengenAirport, HaversineDistance
 
-# ================= CLASE =================
+# Coordenades LEBL (Barcelona El Prat)
+LEBL_LAT = 41.297445
+LEBL_LON = 2.0832941
 
+
+# CLASE
+# -------------------------
 class Aircraft:
-    def __init__(self, id, airline, origin, time):
+    def __init__(self, id="", airline="", origin="", arrival=""):
         self.id = id
         self.airline = airline
         self.origin = origin
-        self.time = time
+        self.arrival = arrival  # format "hh:mm"
 
 
-# ================= FUNCIONES =================
+# CACHE DE COORDENADES
+# -------------------------
+_airport_coords = {}
 
-def LoadArrivals(filename):
+
+def _load_airport_coords():
+    """Loads airport coordinates from Airports.txt into the cache."""
+    global _airport_coords
+    if not _airport_coords:
+        airports = LoadAirports('Airports.txt')
+        for a in airports:
+            _airport_coords[a.code] = (a.lat, a.lon)
+        # Sempre incloure LEBL
+        _airport_coords['LEBL'] = (LEBL_LAT, LEBL_LON)
+
+
+def _get_airport_coords(code):
+    """Returns (lat, lon) for a given ICAO code, or None if unknown."""
+    _load_airport_coords()
+    return _airport_coords.get(code, None)
+
+
+# CARGAR LLEGADAS
+# -------------------------
+def LoadArrivals(Arrivals):
     aircrafts = []
 
     try:
-        with open(filename, 'r') as f:
+        with open(Arrivals, "r") as f:
             lines = f.readlines()
 
-        for line in lines[1:]:
-            parts = line.split()
+        for line in lines[1:]:  # skip header
+            parts = line.strip().split()
 
             if len(parts) != 4:
                 continue
 
+            id, origin, arrival, airline = parts
+
+            # validar hora
+            if ":" not in arrival:
+                continue
+
             try:
-                h, m = parts[2].split(":")
-                int(h); int(m)
+                h, m = arrival.split(":")
+                h = int(h)
+                m = int(m)
+                if h < 0 or h > 23 or m < 0 or m > 59:
+                    continue
             except:
                 continue
 
-            aircraft = Aircraft(parts[0], parts[3], parts[1], parts[2])
-            aircrafts.append(aircraft)
+            aircrafts.append(Aircraft(id, airline, origin, arrival))
 
-    except Exception:
+    except FileNotFoundError:
+        print(f"[LoadArrivals] File not found: {Arrivals}")
         return []
 
     return aircrafts
 
 
-def SaveFlights(aircrafts, filename):
+# GRAFICAR LLEGADAS POR HORA
+# -------------------------
+def PlotArrivals(aircrafts):
     if not aircrafts:
+        print("Error: empty aircraft list")
+        return
+
+    hours = [0] * 24
+
+    for a in aircrafts:
+        h = int(a.arrival.split(":")[0])
+        hours[h] += 1
+
+    plt.bar(range(24), hours)
+    plt.xlabel("Hour")
+    plt.ylabel("Arrivals")
+    plt.title("Arrivals per hour")
+    plt.xticks(range(24))
+    plt.show()
+
+
+# GUARDAR VUELOS
+# -------------------------
+def SaveFlights(aircrafts, filename):  # FIX 2: usar el paràmetre filename
+    if not aircrafts:
+        print("Error: empty list")
         return -1
 
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:  # FIX 2: filename correcte
         f.write("AIRCRAFT ORIGIN ARRIVAL AIRLINE\n")
 
         for a in aircrafts:
             id = a.id if a.id else "-"
             origin = a.origin if a.origin else "-"
-            time = a.time if a.time else "0:00"
+            arrival = a.arrival if a.arrival else "0"
             airline = a.airline if a.airline else "-"
 
-            f.write(f"{id} {origin} {time} {airline}\n")
+            f.write(f"{id} {origin} {arrival} {airline}\n")
+
+    return 0
 
 
-def PlotArrivals(aircrafts):
-    if not aircrafts:
-        print("Lista vacía")
-        return
-
-    hours = [0]*24
-
-    for a in aircrafts:
-        h = int(a.time.split(":")[0])
-        hours[h] += 1
-
-    plt.bar(range(24), hours)
-    plt.xlabel("Hora")
-    plt.ylabel("Número de vuelos")
-    plt.title("Llegadas por hora")
-    plt.show()
-
-
+# GRAFICAR AEROLINEAS
+# -------------------------
 def PlotAirlines(aircrafts):
     if not aircrafts:
-        print("Lista vacía")
+        print("Error: empty aircraft list")
         return
 
-    count = {}
+    counts = {}
 
     for a in aircrafts:
-        count[a.airline] = count.get(a.airline, 0) + 1
+        counts[a.airline] = counts.get(a.airline, 0) + 1
 
-    plt.bar(count.keys(), count.values())
+    airlines = list(counts.keys())
+    values = list(counts.values())
+
+    plt.bar(airlines, values)
+    plt.xlabel("Airline")
+    plt.ylabel("Flights")
+    plt.title("Flights per airline")
     plt.xticks(rotation=45)
-    plt.title("Vuelos por aerolínea")
     plt.show()
 
 
-def PlotFlightsType(aircrafts, airports):
+# GRAFICAR TIPO DE VUELO (Schengen / Non)
+# -------------------------
+def PlotFlightsType(aircrafts):
     if not aircrafts:
-        print("Lista vacía")
+        print("Error: empty aircraft list")
         return
 
-    sch = 0
-    non = 0
+    schengen = 0
+    non_schengen = 0
 
     for a in aircrafts:
-        for ap in airports:
-            if ap.code == a.origin:
-                if ap.schengen:
-                    sch += 1
-                else:
-                    non += 1
+        if IsSchengenAirport(a.origin):
+            schengen += 1
+        else:
+            non_schengen += 1
 
-    plt.bar(["Flights"], [sch], label="Schengen")
-    plt.bar(["Flights"], [non], bottom=[sch], label="Non Schengen")
+    plt.bar(["Flights"], [schengen], label="Schengen")
+    plt.bar(["Flights"], [non_schengen], bottom=[schengen], label="Non-Schengen")
+
     plt.legend()
-    plt.title("Tipo de vuelos")
+    plt.title("Flights type")
     plt.show()
 
 
-# ================= DISTANCIA =================
+# MAPEAR VUELOS (KML)
+# -------------------------
+def MapFlights(aircrafts):
+    if not aircrafts:
+        print("Error: empty aircraft list")
+        return
 
-def Haversine(lat1, lon1, lat2, lon2):
-    r = 6371
+    _load_airport_coords()  # FIX 3: carregar coordenades abans d'usar-les
+    filename = "flights.kml"
 
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
+    with open(filename, "w") as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+        f.write('<kml xmlns="http://www.opengis.net/kml/2.2">\n')
+        f.write('<Document>\n')
 
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
+        for a in aircrafts:
+            # FIX 3: obtenir coordenades reals de l'aeroport origen
+            coords = _get_airport_coords(a.origin)
+            if coords is None:
+                continue  # saltar si no es coneixen les coordenades
 
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            origin_lat, origin_lon = coords  # FIX 3: usar variables locals, no atributs inexistents
+            color = "ff0000ff" if IsSchengenAirport(a.origin) else "ff00ff00"
 
-    return r * c
+            f.write(f'<Placemark>\n')
+            f.write(f'  <name>{a.id}</name>\n')
+            f.write(f'  <Style><LineStyle><color>{color}</color><width>2</width></LineStyle></Style>\n')
+            f.write(f'  <LineString>\n')
+            f.write(f'    <altitudeMode>clampToGround</altitudeMode>\n')
+            f.write(f'    <tessellate>1</tessellate>\n')
+            f.write(f'    <coordinates>{origin_lon},{origin_lat},0 {LEBL_LON},{LEBL_LAT},0</coordinates>\n')
+            f.write(f'  </LineString>\n')
+            f.write(f'</Placemark>\n')
+
+        f.write('</Document>\n</kml>')
+
+    print(f"KML file generated: {filename}")
 
 
-def LongDistanceArrivals(aircrafts, airports):
+# LLEGADAS DE LARGA DISTANCIA
+# -------------------------
+def LongDistanceArrivals(aircrafts):
     result = []
 
-    for a in aircrafts:
-        for ap in airports:
-            if ap.code.strip().upper() == a.origin.strip().upper():
-                dist = Haversine(ap.lat, ap.lon, 41.297, 2.083)  # LEBL
+    _load_airport_coords()  # FIX 4: carregar coordenades
 
-                if dist > 2000:
-                    result.append(a)
+    for a in aircrafts:
+        coords = _get_airport_coords(a.origin)
+        if coords is None:
+            continue  # FIX 4: saltar si no es coneixen les coordenades (no assumir 3000 km)
+
+        # FIX 4: calcular distància real amb Haversine
+        dist = HaversineDistance(coords[0], coords[1], LEBL_LAT, LEBL_LON)
+
+        if dist > 2000:
+            result.append(a)
 
     return result
 
 
-# ================= MAPA =================
-
-def MapFlights(aircrafts, airports, only_long=False):
-    F = open("flights.kml", "w")
-
-    F.write("<?xml version='1.0' encoding='UTF-8'?>\n")
-    F.write("<kml xmlns='http://www.opengis.net/kml/2.2'>\n")
-    F.write("<Document>\n")
-
-    for a in aircrafts:
-        for ap in airports:
-            if ap.code == a.origin:
-
-                dist = Haversine(ap.lat, ap.lon, 41.297, 2.083)
-
-                if only_long and dist <= 2000:
-                    continue
-
-                color = "ff0000ff" if ap.schengen else "ff00ffff"
-
-                F.write("<Placemark>\n")
-                F.write("<Style><LineStyle><color>" + color + "</color></LineStyle></Style>\n")
-                F.write("<LineString>\n")
-                F.write("<coordinates>")
-                F.write(f"{ap.lon},{ap.lat},0 2.083,41.297,0")
-                F.write("</coordinates>\n")
-                F.write("</LineString>\n")
-                F.write("</Placemark>\n")
-
-    F.write("</Document>\n")
-    F.write("</kml>\n")
-
-    F.close()
-
-
-# ================= TEST =================
-
+# COMPROVACIÓ
+# -------------------------
 if __name__ == "__main__":
-    aircrafts = LoadArrivals("arrivals.txt")
-    airports = LoadAirports("Airports.txt")
+    aircrafts = LoadArrivals("Arrivals.txt")
 
-    for ap in airports:
-        SetSchengen(ap)
+    print("Loaded:", len(aircrafts))
 
     PlotArrivals(aircrafts)
     PlotAirlines(aircrafts)
-    PlotFlightsType(aircrafts, airports)
+    PlotFlightsType(aircrafts)
 
-    long_flights = LongDistanceArrivals(aircrafts, airports)
-    print("Vuelos largos:", len(long_flights))
+    SaveFlights(aircrafts, "output.txt")
 
-    MapFlights(aircrafts, airports)
+    long_flights = LongDistanceArrivals(aircrafts)
+    print("Long distance flights:", len(long_flights))
+
+    MapFlights(aircrafts)
