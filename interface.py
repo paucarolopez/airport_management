@@ -206,66 +206,6 @@ def refresh_flights_list():
                                f"{ac.aircraft_id}  |  {ac.origin}  |  {ac.arrival}  |  {ac.airline}")
 
 
-# ================== FUNCIONES V3 ==================
-
-def load_structure():
-    global bcn
-    bcn = LoadAirportStructure("LEBL.txt")
-
-    if bcn == -1:
-        messagebox.showerror("Error", "No se pudo cargar LEBL.txt — comprueba que existe")
-        bcn = None
-    else:
-        messagebox.showinfo("OK", f"Estructura de {bcn.code} cargada "
-                                  f"({len(bcn.terminals)} terminales)")
-
-
-def assign_gates():
-    if bcn is None:
-        messagebox.showerror("Error", "Carga primero la estructura del aeropuerto")
-        return
-    if not aircrafts:
-        # FIX 1: ara és possible carregar vuelos des de la pestanya Vuelos
-        messagebox.showerror("Error", "No hay vuelos cargados — cárgalos en la pestaña Vuelos")
-        return
-
-    assigned = 0
-    for ac in aircrafts:
-        result = AssignGate(bcn, ac)
-        if result != -1:
-            assigned += 1
-
-    messagebox.showinfo("OK", f"Gates asignados: {assigned} de {len(aircrafts)} vuelos")
-
-
-def show_occupancy():
-    if bcn is None:
-        messagebox.showerror("Error", "No hay aeropuerto cargado")
-        return
-
-    occ = GateOccupancy(bcn)
-
-    # FIX 4: finestra amb Listbox i scrollbar — mostra TOTS els gates, no només 25
-    win = tk.Toplevel(root)
-    win.title(f"Ocupación de puertas — {bcn.code}")
-    win.geometry("500x450")
-
-    tk.Label(win, text=f"Total gates: {len(occ)}", font=("Arial", 10, "bold")).pack(pady=4)
-
-    frame = tk.Frame(win)
-    frame.pack(fill="both", expand=True, padx=8, pady=4)
-
-    lb = tk.Listbox(frame, font=("Courier New", 9))
-    sb = tk.Scrollbar(frame, orient="vertical", command=lb.yview)
-    lb.configure(yscrollcommand=sb.set)
-
-    lb.pack(side="left", fill="both", expand=True)
-    sb.pack(side="right", fill="y")
-
-    for g in occ:
-        status = f"✔ {g['aircraft']}" if g['occupied'] else "libre"
-        lb.insert(tk.END, f"{g['gate']:20s}  {status}")
-
 
 # ================== TAB 1 — AEROPUERTOS ==================
 
@@ -318,13 +258,6 @@ sb_fl = tk.Scrollbar(tab2, orient="vertical", command=flights_listbox.yview)
 flights_listbox.configure(yscrollcommand=sb_fl.set)
 sb_fl.pack(side="right", fill="y")
 
-# ================== TAB 3 — PUERTAS ==================
-
-tk.Label(tab3, text="Gestión de Puertas de Embarque", font=("Arial", 14)).pack(pady=10)
-
-tk.Button(tab3, text="Cargar estructura aeropuerto", command=load_structure).pack(pady=5)
-tk.Button(tab3, text="Asignar gates", command=assign_gates).pack(pady=5)
-tk.Button(tab3, text="Mostrar ocupación", command=show_occupancy).pack(pady=5)
 
 # ==================
 root.mainloop()
