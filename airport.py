@@ -1,6 +1,6 @@
 # Importo matplotlib para poder hacer gráficos
 import matplotlib.pyplot as plt
-import math  # necessari per a HaversineDistance
+
 
 
 # ================= CLASE =================
@@ -31,7 +31,6 @@ def IsSchengenAirport(code):
     else:
         return False  # no es Schengen
 
-
 def convert_coord(coord_str):
     """
     Convierte coordenadas tipo 'N452805' o 'W0734429' a decimal con precisión completa.
@@ -55,28 +54,6 @@ def convert_coord(coord_str):
         decimal = -decimal
 
     return decimal
-
-
-def decimal_to_coord(value, is_lat):
-    """
-    Convierte un valor decimal a formato NDDMMSS (latitud) o EDDDMMSS (longitud).
-    Necessari per a SaveSchengenAirports.
-    """
-    if is_lat:
-        direction = 'N' if value >= 0 else 'S'
-    else:
-        direction = 'E' if value >= 0 else 'W'
-
-    value = abs(value)
-    degrees = int(value)
-    minutes = int((value - degrees) * 60)
-    seconds = int(round(((value - degrees) * 60 - minutes) * 60))
-
-    if is_lat:
-        return f"{direction}{degrees:02d}{minutes:02d}{seconds:02d}"  # NDDMMSS
-    else:
-        return f"{direction}{degrees:03d}{minutes:02d}{seconds:02d}"  # EDDDMMSS
-
 
 def SetSchengen(airport):
     # asigno el valor de Schengen usando la función anterior
@@ -103,10 +80,6 @@ def LoadAirports(Airports):
         while i < len(lines):  # recorro todas las líneas
             parts = lines[i].split()  # separo cada línea en partes
 
-            if len(parts) < 3:  # línia incompleta, la salto
-                i += 1
-                continue
-
             code = parts[0]  # guardo el código
 
             lat_str = parts[1]  # guardo latitud en formato texto
@@ -116,8 +89,6 @@ def LoadAirports(Airports):
             lon = convert_coord(lon_str)
 
             airport = Airport(code, lat, lon)  # creo aeropuerto
-
-            SetSchengen(airport)  # FIX 1: assigno Schengen (abans no es feia!)
 
             airports.append(airport)  # lo añado a la lista
 
@@ -139,10 +110,7 @@ def SaveSchengenAirports(airports, filename):
 
     for a in airports:  # recorro lista
         if a.schengen:  # si es Schengen
-            # FIX 2: guardar en format original NDDMMSS/EDDDMMSS, no decimal
-            lat_str = decimal_to_coord(a.lat, is_lat=True)
-            lon_str = decimal_to_coord(a.lon, is_lat=False)
-            line = a.code + " " + lat_str + " " + lon_str + "\n"
+            line = a.code + " " + str(a.lat) + " " + str(a.lon) + "\n"
             F.write(line)  # escribo línea
 
     F.close()  # cierro archivo
@@ -194,20 +162,10 @@ def MapAirports(airports):
     F.write("<kml xmlns='http://www.opengis.net/kml/2.2'>\n")
     F.write("<Document>\n")
 
-    # FIX 3: definir estils de color per Schengen i no-Schengen
-    F.write("<Style id='schengen'><IconStyle><color>ffff0000</color></IconStyle></Style>\n")
-    F.write("<Style id='non_schengen'><IconStyle><color>ff0000ff</color></IconStyle></Style>\n")
-
     for a in airports:  # recorro aeropuertos
         F.write("<Placemark>\n")  # inicio punto
 
         F.write("<name>" + a.code + "</name>\n")  # nombre
-
-        # FIX 3: assignar estil segons si és Schengen o no
-        if a.schengen:
-            F.write("<styleUrl>#schengen</styleUrl>\n")
-        else:
-            F.write("<styleUrl>#non_schengen</styleUrl>\n")
 
         F.write("<Point>\n")
         F.write("<coordinates>" + str(a.lon) + "," + str(a.lat) + ",0</coordinates>\n")  # coordenadas
@@ -218,27 +176,5 @@ def MapAirports(airports):
     F.write("</Document>\n")  # fin documento
     F.write("</kml>\n")
 
+
     F.close()  # cierro archivo
-
-
-# ================= HAVERSINE =================
-
-def HaversineDistance(lat1, lon1, lat2, lon2):
-    """
-    Calcula la distància en km entre dos punts (lat/lon en graus decimals).
-    Necessari per a aircraft.py → LongDistanceArrivals.
-    """
-    R = 6371  # radi de la Terra en km
-
-    lat1 = math.radians(lat1)
-    lon1 = math.radians(lon1)
-    lat2 = math.radians(lat2)
-    lon2 = math.radians(lon2)
-
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    return R * c
