@@ -1,7 +1,9 @@
 # Importo matplotlib para poder hacer gráficos
 import matplotlib.pyplot as plt
 import math  # necessari per a HaversineDistance
-
+import webbrowser
+import re
+import os
 
 # ================= CLASE =================
 
@@ -129,11 +131,11 @@ def LoadAirports(Airports):
     return airports  # devuelvo la lista
 
 
-def SaveSchengenAirports(airports, filename):
+def SaveSchengenAirports(airports, SchengenAirports):
     if len(airports) == 0:  # si la lista está vacía
         return -1  # error
 
-    F = open(filename, 'w')  # abro archivo en modo escritura
+    F = open(SchengenAirports, 'w')  # abro archivo en modo escritura
 
     F.write("CODE LAT LON\n")  # escribo cabecera
 
@@ -149,12 +151,23 @@ def SaveSchengenAirports(airports, filename):
 
 
 def AddAirport(airports, airport):
-    for a in airports:  # recorro lista
-        if a.code == airport.code:  # si ya existe
-            return  # no lo añado
+    # Validar que el código ICAO contenga exactamente 4 letras de la A a la Z
+    if not re.match(r"^[A-Z]{4}$", airport.code):
+        return "ERROR_ICAO"
 
-    airports.append(airport)  # lo añado si no existe
+    # Validar rangos físicos reales de las coordenadas geográficas
+    if not (-90 <= airport.lat <= 90):
+        return "ERROR_LAT"
+    if not (-180 <= airport.lon <= 180):
+        return "ERROR_LON"
 
+    # Verificar si ya existe duplicado
+    for a in airports:
+        if a.code == airport.code:
+            return "ERROR_DUPLICADO"
+
+    airports.append(airport)
+    return "OK"
 
 def RemoveAirport(airports, code):
     i = 0  # índice
@@ -187,38 +200,46 @@ def PlotAirports(airports):
 
 
 def MapAirports(airports):
-    F = open("airports.kml", "w")  # creo archivo KML
+    filename = "airports.kml"
+    F = open(filename, "w")
 
-    # escribo cabecera KML
     F.write("<?xml version='1.0' encoding='UTF-8'?>\n")
     F.write("<kml xmlns='http://www.opengis.net/kml/2.2'>\n")
     F.write("<Document>\n")
 
-    # FIX 3: definir estils de color per Schengen i no-Schengen
     F.write("<Style id='schengen'><IconStyle><color>ffff0000</color></IconStyle></Style>\n")
     F.write("<Style id='non_schengen'><IconStyle><color>ff0000ff</color></IconStyle></Style>\n")
 
-    for a in airports:  # recorro aeropuertos
-        F.write("<Placemark>\n")  # inicio punto
+    for a in airports:
+        F.write("<Placemark>\n")
+        F.write("<name>" + a.code + "</name>\n")
 
-        F.write("<name>" + a.code + "</name>\n")  # nombre
-
-        # FIX 3: assignar estil segons si és Schengen o no
         if a.schengen:
             F.write("<styleUrl>#schengen</styleUrl>\n")
         else:
             F.write("<styleUrl>#non_schengen</styleUrl>\n")
 
         F.write("<Point>\n")
-        F.write("<coordinates>" + str(a.lon) + "," + str(a.lat) + ",0</coordinates>\n")  # coordenadas
+        F.write("<coordinates>" + str(a.lon) + "," + str(a.lat) + ",0</coordinates>\n")
         F.write("</Point>\n")
+        F.write("</Placemark>\n")
 
-        F.write("</Placemark>\n")  # fin punto
-
-    F.write("</Document>\n")  # fin documento
+    F.write("</Document>\n")
     F.write("</kml>\n")
+    F.close()
 
-    F.close()  # cierro archivo
+    # EJECUCIÓN DIRECTA DEL ARCHIVO KML EN EL SISTEMA OPERATIVO
+    try:
+        # os.startfile es exclusivo de Windows y abre el archivo con su programa asignado (Google Earth Pro)
+        if hasattr(os, 'startfile'):
+            os.startfile(filename)
+        else:
+            # Comando alternativo para sistemas basados en Unix/Mac (por si acaso)
+            import subprocess
+            subprocess.call(('open', filename))
+    except Exception:
+        # Si el sistema no tiene un programa asignado para .kml, abrimos la versión web como plan de contingencia
+        webbrowser.open("https://earth.google.com/web/")
 
 
 # ================= HAVERSINE =================
