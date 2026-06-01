@@ -1,64 +1,38 @@
-# ✈️ Airport Gate Management Tool
+# ✈️ Airport Gate Management Tool - Version 3
 
 ## Project Description
-
-This project consists of developing a tool to manage airport gates.
-The system will allow assigning gates to flights, managing airport data, and visualizing occupancy statistics.
-
-This repository contains **Version 1**, focused on airport data management.
+This version introduces the **Gate Assignment System**. We have modeled the airport structure (Terminals, Boarding Areas, and Gates) and implemented the logic to assign aircraft to available gates based on operational requirements (Schengen/Non-Schengen).
 
 ---
 
-## Version 1 Features
-
-* Load airports from a file
-* Add and delete airports
-* Store airport data:
-
-  * ICAO code
-  * Latitude and longitude
-* Graphical user interface (GUI)
-* Visualization of airport locations (Google Earth)
-
----
-
-## Project Structure
-
-* `airport.py` → Airport class definition
-* `main.py` → Main execution file
-* (future files will be added in later versions)
-
----
-
-## How to Run
-
-1. Open the project in PyCharm
-2. Run `main.py`
+## Version 3 Features
+* Full Airport Structure modeling (LEBL data)
+* Gate/Terminal/Area hierarchy
+* Automated Gate Assignment Algorithm:
+  * Airline-to-Terminal mapping
+  * Schengen/Non-Schengen compatibility check
+* Gate occupancy tracking and manual release
 
 ---
 
 ## Demo Video
 
-https://youtu.be/IOMGNEMnM4Q
+
+
+[https://youtu.be/IOMGNEMnM4Q](https://youtu.be/KyMU-hvc610)
+
+
+
+---
+
+## Project Structure
+* `LEBL.py` → Airport operational logic and gate management
+* `airport.py` → Infrastructure definitions
+* `aircraft.py` → Flight and movement logic
 
 ---
 
 ## Team Members
-
 * Pau Caro Lopez
 * Aniol Fàbregas Manera
 * Jose Ezquerra Carrera
-
----
-
-## External Help
-
-Some parts of this text were developed with the help of AI tools such as ChatGPT.
-
----
-
-## Future Improvements
-
-* Gate assignment system
-* Terminal and flight management
-* Advanced data visualization
