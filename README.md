@@ -15,6 +15,15 @@ This version introduces the **Gate Assignment System**. We have modeled the airp
 
 ---
 
+## How to Run
+1. Ensure the following files exist in the project directory:
+   - `LEBL.txt` (Airport structure)
+   - `T1_Airlines.txt` & `T2_Airlines.txt` (Airline assignments)
+2. Run `Interface.py`.
+3. To assign gates manually or test the hierarchy, you can run `LEBL.py` directly to see the console output and gate occupancy status.
+
+---
+
 ## Demo Video
 
 
