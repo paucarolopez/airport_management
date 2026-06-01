@@ -33,13 +33,13 @@ This repository contains **Version 1**, focused on airport data management.
 ## How to Run
 
 1. Open the project in PyCharm
-2. Run `main.py`
+2. Run `Interface.py`
 
 ---
 
 ## Demo Video
 
-https://youtu.be/IOMGNEMnM4Q
+[https://youtu.be/IOMGNEMnM4Q](https://youtu.be/uPa4L4_y7JI)
 
 ---
 
