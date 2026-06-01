@@ -33,7 +33,7 @@ This repository contains **Version 1**, focused on airport data management.
 ## How to Run
 
 1. Open the project in PyCharm
-2. Run `main.py`
+2. Run `Interface.py`
 
 ---
 
