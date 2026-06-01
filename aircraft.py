@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import math
 from airport import LoadAirports, IsSchengenAirport, HaversineDistance
-
+import webbrowser
 # Coordenades LEBL (Barcelona El Prat)
 LEBL_LAT = 41.297445
 LEBL_LON = 2.0832941
@@ -41,41 +41,57 @@ def _get_airport_coords(code):
 
 # CARGAR LLEGADAS
 # -------------------------
-def LoadArrivals(Arrivals):
-    aircrafts = []
+def LoadArrivals(filename):
+    aircrafts = []  # creo lista vacía para guardar los aviones
 
     try:
-        with open(Arrivals, "r") as f:
-            lines = f.readlines()
+        F = open(filename, 'r')  # abro el archivo en modo lectura
+        lines = F.readlines()  # leo todas las líneas
+        F.close()  # cierro el archivo
 
-        for line in lines[1:]:  # skip header
-            parts = line.strip().split()
+        i = 1  # empiezo en 1 para saltar la línea de cabecera
 
-            if len(parts) != 4:
+        while i < len(lines):
+            parts = lines[i].split()  # separo la línea por espacios o tabuladores
+
+            # El enunciado dice que si la línea no tiene la estructura correcta, la salte
+            if len(parts) < 4:
+                i += 1
                 continue
 
-            id, origin, arrival, airline = parts
+            aircraft_id = parts[0]
+            origin_airport = parts[1]
+            time_str = parts[2]
+            airline_company = parts[3]
 
-            # validar hora
-            if ":" not in arrival:
-                continue
+            # Validación del formato de hora hh:mm o h:mm
+            time_parts = time_str.split(':')
+            if len(time_parts) != 2:
+                i += 1
+                continue  # si no tiene ':' la saltamos
 
             try:
-                h, m = arrival.split(":")
-                h = int(h)
-                m = int(m)
-                if h < 0 or h > 23 or m < 0 or m > 59:
+                hour = int(time_parts[0])
+                minute = int(time_parts[1])
+                # Compruebo que la hora y minutos sean valores lógicos reales
+                if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+                    i += 1
                     continue
-            except:
-                continue
+            except ValueError:
+                i += 1
+                continue  # si la hora no contiene números válidos, la saltamos
 
-            aircrafts.append(Aircraft(id, airline, origin, arrival))
+            # Si todo es correcto, creamos el objeto Aircraft y lo añadimos
+            flight = Aircraft(aircraft_id, airline_company, origin_airport, time_str)
+            aircrafts.append(flight)
 
-    except FileNotFoundError:
-        print(f"[LoadArrivals] File not found: {Arrivals}")
-        return []
+            i += 1  # pasamos a la siguiente línea del fichero
 
-    return aircrafts
+    except:
+        return []  # si el archivo no existe o falla, devuelvo lista vacía
+
+    return aircrafts  # devuelvo la lista de aviones cargados
+
 
 
 # GRAFICAR LLEGADAS POR HORA
@@ -102,22 +118,26 @@ def PlotArrivals(aircrafts):
 # GUARDAR VUELOS
 # -------------------------
 def SaveFlights(aircrafts, filename):  # FIX 2: usar el paràmetre filename
-    if not aircrafts:
-        print("Error: empty list")
-        return -1
+    if len(aircrafts) == 0:  # si la lista está vacía
+        return -1  # devuelvo código de error
 
-    with open(filename, "w") as f:  # FIX 2: filename correcte
-        f.write("AIRCRAFT ORIGIN ARRIVAL AIRLINE\n")
+    try:
+        F = open(filename, 'w')  # abro el archivo en modo escritura
+        F.write("AIRCRAFT ORIGIN ARRIVAL AIRLINE\n")  # escribo la cabecera
 
-        for a in aircrafts:
-            id = a.id if a.id else "-"
-            origin = a.origin if a.origin else "-"
-            arrival = a.arrival if a.arrival else "0"
-            airline = a.airline if a.airline else "-"
+        for ac in aircrafts:
+            # Control de campos vacíos: si no tienen valor, ponemos '-' o 0 según corresponda
+            id_val = ac.aircraft_id if ac.aircraft_id else '-'
+            origin_val = ac.origin_airport if ac.origin_airport else '-'
+            time_val = ac.time_of_landing if ac.time_of_landing else '-'
+            airline_val = ac.airline_company if ac.airline_company else '-'
 
-            f.write(f"{id} {origin} {arrival} {airline}\n")
+            line = f"{id_val} {origin_val} {time_val} {airline_val}\n"
+            F.write(line)  # escribo la línea en el archivo
 
-    return 0
+        F.close()  # cierro el archivo
+    except:
+        return -1  # error de escritura
 
 
 # GRAFICAR AEROLINEAS
@@ -204,6 +224,10 @@ def MapFlights(aircrafts):
         f.write('</Document>\n</kml>')
 
     print(f"KML file generated: {filename}")
+    try:
+        webbrowser.open("https://earth.google.com/web/")
+    except Exception:
+        pass
 
 
 # LLEGADAS DE LARGA DISTANCIA
@@ -225,6 +249,10 @@ def LongDistanceArrivals(aircrafts):
             result.append(a)
 
     return result
+    try:
+        webbrowser.open("https://earth.google.com/web/")
+    except Exception:
+            pass
 
 
 # COMPROVACIÓ
